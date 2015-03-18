@@ -55,17 +55,10 @@
 
             list.placeEl = $('<div class="' + list.options.placeClass + '"/>');
 
-            $.each(this.el.find(list.options.itemNodeName), function(k, el) {
-                list.setParent($(el));
-            });
-
             var onStartEvent = function(e)
             {
                 var handle = $(e.target);
                 if (!handle.hasClass(list.options.handleClass)) {
-                    if (handle.closest('.' + list.options.noDragClass).length) {
-                        return;
-                    }
                     handle = handle.closest('.' + list.options.handleClass);
                 }
 
@@ -78,8 +71,11 @@
                     return;
                 }
 
-                e.preventDefault();
-                list.dragStart(e.touches ? e.touches[0] : e);
+                var dragEl = handle.closest('.' + list.options.itemClass);
+                if(dragEl[0].parentNode===list.el[0]){
+                    e.preventDefault();
+                    list.dragStart(e.touches ? e.touches[0] : e);
+                }
             };
 
             var onMoveEvent = function(e)
@@ -142,13 +138,7 @@
 
         setParent: function(li)
         {
-            li.children('[data-action="expand"]').hide();
-        },
-
-        unsetParent: function(li)
-        {
-            li.children('[data-action]').remove();
-            li.children(this.options.listNodeName).remove();
+            li.data("fv_parent_list",this);
         },
 
         dragStart: function(e)
@@ -256,30 +246,35 @@
             if (!hasPointerEvents) {
                 this.dragEl[0].style.visibility = 'hidden';
             }
-            this.pointEl = $(document.elementFromPoint(e.pageX - document.body.scrollLeft, e.pageY - (window.pageYOffset || document.documentElement.scrollTop)));
-            if(!this.pointEl.hasClass(opt.itemClass)){
-                this.pointEl = this.pointEl.closest('.' + opt.itemClass);
+            
+
+            var pointEl = $(document.elementFromPoint(e.pageX - document.body.scrollLeft, e.pageY - (window.pageYOffset || document.documentElement.scrollTop)));
+            if(!pointEl.hasClass(opt.itemClass)){
+                pointEl = pointEl.closest('.' + opt.itemClass);
             }
             if (!hasPointerEvents) {
                 this.dragEl[0].style.visibility = 'visible';
             }
-            if (this.pointEl.hasClass(opt.handleClass)) {
-                this.pointEl = this.pointEl.closest("."+opt.itemClass);
+            if (pointEl.hasClass(opt.handleClass)) {
+                pointEl = pointEl.closest("."+opt.itemClass);
             }
-            else if (!this.pointEl.length || !this.pointEl.hasClass(opt.itemClass)) {
+            else if (!pointEl.length || !pointEl.hasClass(opt.itemClass)) {
                 return;
             }
 
             // find parent list of item under cursor
-            var pointElRoot = this.pointEl.closest('.' + opt.rootClass);
+            var pointElRoot = $(pointEl[0].parentNode)
 
             /**
              * move vertical
              */
             // check that this is the same list element
+            // console.log(this.el[0], pointElRoot[0]);
             if (this.el[0] !== pointElRoot[0]) {
                 return;
             }
+
+            this.pointEl = pointEl;
 
             var diffY = e.pageY - this.pointEl.offset().top;
             var diffX = e.pageY - this.pointEl.offset().top;
@@ -308,8 +303,7 @@
         var lists  = this,
             retval = this;
 
-        lists.each(function()
-        {
+        lists.each(function(){
             var plugin = $(this).data("nestable");
 
             if (!plugin) {
